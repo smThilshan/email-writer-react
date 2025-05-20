@@ -1,102 +1,133 @@
-import { useState } from 'react';
-import './App.css';
+import { useState } from "react";
+import axios from "axios";
 import {
   Container,
   Typography,
   TextField,
-  Select,
-  MenuItem,
   Button,
-  Box,
+  MenuItem,
   CircularProgress,
-  Paper
-} from '@mui/material';
+  Paper,
+} from "@mui/material";
+
+const tones = ["Formal", "Informal", "Friendly", "Professional"];
 
 function App() {
-  const [emailContent, setEmailContent] = useState('');
-  const [tone, setTone] = useState('');
-  const [generatedReply, setGeneratedReply] = useState('');
+  const [emailContent, setEmailContent] = useState("");
+  const [tone, setTone] = useState("");
+  const [generatedReply, setGeneratedReply] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  const handleGenerateReply = () => {
+  const handleGenerateReply = async () => {
     setLoading(true);
-    setError('');
-    setGeneratedReply('');
+    setError("");
+    setGeneratedReply("");
 
-    // Simulate API call
-    setTimeout(() => {
-      if (!emailContent || !tone) {
-        setError('Please enter email content and select a tone.');
-      } else {
-        setGeneratedReply(`(Mock Reply in "${tone}" tone)\n\nThank you for your email. I'll get back to you shortly.`);
-      }
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/email/generate",
+        {
+          emailContent,
+          tone,
+        }
+      );
+
+      // setGeneratedReply(response.data.reply);
+      setGeneratedReply(
+        typeof response.data === "string"
+          ? response.data
+          : JSON.stringify(response.data)
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate reply. Please try again.");
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   return (
-    <Container maxWidth="sm" style={{ marginTop: '40px' }}>
-      <Paper elevation={3} style={{ padding: '30px', borderRadius: '15px' }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          ✉️ Email Reply Generator
+    <Container maxWidth="sm" style={{ marginTop: "50px" }}>
+      <Typography variant="h4" gutterBottom>
+        Email Reply Generator
+      </Typography>
+
+      <Typography variant="body1" gutterBottom>
+        Enter the email content and select the tone for the reply.
+      </Typography>
+
+      <TextField
+        label="Email Content"
+        multiline
+        rows={6}
+        fullWidth
+        value={emailContent}
+        onChange={(e) => setEmailContent(e.target.value)}
+        margin="normal"
+      />
+
+      <TextField
+        label="Tone"
+        select
+        fullWidth
+        value={tone}
+        onChange={(e) => setTone(e.target.value)}
+        margin="normal"
+      >
+        {tones.map((option) => (
+          <MenuItem key={option} value={option}>
+            {option}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      <Button
+        variant="contained"
+        color="primary"
+        fullWidth
+        size="large"
+        onClick={handleGenerateReply}
+        disabled={!emailContent.trim() || loading}
+        style={{ marginTop: "20px" }}
+      >
+        {loading ? <CircularProgress size={24} /> : "Generate Reply"}
+      </Button>
+
+      {error && (
+        <Typography color="error" style={{ marginTop: "20px" }}>
+          {error}
         </Typography>
+      )}
 
-        <Typography variant="body1" gutterBottom>
-          Enter the email content and choose a tone for your AI-generated reply.
-        </Typography>
-
-        <TextField
-          label="Email Content"
-          multiline
-          rows={6}
-          fullWidth
-          margin="normal"
-          value={emailContent}
-          onChange={(e) => setEmailContent(e.target.value)}
-        />
-
-        <Select
-          value={tone}
-          onChange={(e) => setTone(e.target.value)}
-          displayEmpty
-          fullWidth
-          margin="normal"
+      {generatedReply && (
+        <Paper
+          style={{
+            padding: "20px",
+            marginTop: "30px",
+            backgroundColor: "#f9f9f9",
+          }}
         >
-          <MenuItem value="" disabled>Select Tone</MenuItem>
-          <MenuItem value="Formal">Formal</MenuItem>
-          <MenuItem value="Friendly">Friendly</MenuItem>
-          <MenuItem value="Apologetic">Apologetic</MenuItem>
-          <MenuItem value="Professional">Professional</MenuItem>
-        </Select>
-
-        <Box textAlign="center" marginTop={2}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleGenerateReply}
-            disabled={loading}
-            size="large"
+          <Typography variant="h6">Generated Reply:</Typography>
+          <Typography
+            variant="body1"
+            style={{ marginTop: "10px", whiteSpace: "pre-wrap" }}
           >
-            {loading ? <CircularProgress size={24} /> : 'Generate Reply'}
-          </Button>
-        </Box>
-
-        {error && (
-          <Typography color="error" align="center" marginTop={2}>
-            {error}
+            {generatedReply}
           </Typography>
-        )}
 
-        {generatedReply && (
-          <Box marginTop={4}>
-            <Typography variant="h6">Generated Reply:</Typography>
-            <Paper elevation={1} style={{ padding: '15px', whiteSpace: 'pre-wrap' }}>
-              {generatedReply}
-            </Paper>
-          </Box>
-        )}
-      </Paper>
+          <Button
+            variant="outlined"
+            size="small"
+            style={{ marginTop: "10px" }}
+            onClick={() => {
+              navigator.clipboard.writeText(generatedReply);
+            }}
+          >
+            Copy to Clipboard
+          </Button>
+        </Paper>
+      )}
     </Container>
   );
 }
